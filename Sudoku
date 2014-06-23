@@ -1,0 +1,319 @@
+import java.util.Scanner;
+import java.util.concurrent.Semaphore;
+
+public class Sudoku {
+
+	/* The class Sudoku has a table object to store the input
+	 * and output of the sudoku, a BitSet in a table object so we 
+	 * can check if every big square of the sudoku has the numbers
+	 * 1 through 9, a semaphore for the LosOp-method so it gives
+	 * out one solution at a time, a boolean solutions to keep track
+	 * if the sudoku still has solutions and a boolean reset which we 
+	 * use to end the LosOp-method when set on true
+	 */
+	private static Table tabel;        
+	private static boolean[][][] blokken;
+	private Semaphore semaphore = new Semaphore(1,true);
+	private boolean solutions = true;
+	private boolean reset = false;
+	
+	public Sudoku(){
+		
+		/* Here we construct Sudoku, giving it a table with 81 cells 
+		 * containing -1's and create the 3 by 3 table blokken which has
+		 * in every cell a BitSet containing the numbers 0 through 8 
+		 */
+		tabel = new Table(9,9,-1);
+		blokken = new boolean[3][3][9];
+	}
+	
+	//Some clear code
+	public int getValue(int row, int col){
+		return tabel.get(row,col);
+	}
+	
+	public boolean getSolutions(){
+		return solutions;
+	}
+	
+	public void setSolutions(boolean a){
+		solutions = a;
+	}
+	
+	public Semaphore getSemaphore(){
+		return semaphore;
+	}
+	
+	public void setSemaphore(){
+		
+		//reset Sudoku's semaphore
+		semaphore = new Semaphore(1,true);
+	}
+	
+	public boolean getReset(){
+		return reset;
+	}
+	
+	public void setReset(boolean r){
+		reset = r;
+	}
+	
+	public boolean containZero(){
+		
+		// Checks whether tabel has any value equal to 0
+		for(int i = 0; i < 9; i++){
+			for(int j = 0; j < 9; j++){
+				if(tabel.get(i,j) == 0){
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
+	public static boolean checkKolom(Punt p, int w){
+		
+		// Checks if the Column of tabel at the x-coordinate of p contains w
+		int k = p.GetX();
+		for(int i =0; i<9; i++){
+			if(tabel.get(i,k) == w) return true;
+		}
+		return false;
+	}
+	
+	public static boolean checkRij(Punt p, int w){
+		
+		// Checks if the Row of tabel at the y-coordinate of p contains w
+		int r = p.GetY();
+		for(int i =0; i<9; i++){
+			if(tabel.get(r,i) == w) return true;
+		}
+		return false;
+	}
+	
+	public static Punt nummerVierkant(Punt p){
+		
+		// Changes a point in tabel to the matching point in blokken
+		int xt = p.GetX();
+		int yt = p.GetY();
+		int xb = (xt-(xt%3))/3;
+		int yb = (yt-(yt%3))/3;
+		return(new Punt(xb,yb));
+	}
+	
+	public static boolean checkBlok(Punt p, int w){
+		
+		// Checks if a point in tabel with a certain value w is found on the appropriate spot in blokken
+		Punt blok = nummerVierkant(p);
+		if(blokken[blok.GetY()][blok.GetX()][w-1]) return true;
+		return false;
+	}
+	
+	public static Punt next(Punt p){
+		
+		// Calculates the next point in tabel given that the current point is p
+		if(p.GetX()<8) return(new Punt(p.GetX()+1, p.GetY()));
+		if(p.GetY()<8) return(new Punt(0, p.GetY()+1));
+		return(new Punt(-1,-1));
+	}
+	
+	public boolean vulIn(int[] a){
+		
+		// Fills in tabel and blokken given an array of integers (a sudoku)
+		int k = -1;
+		Punt p = new Punt(0,0);
+		Punt blokje = new Punt(-1,-1);
+		for(int i = 0; i<81; i++){
+			k = a[i]; 
+			if(k!=0){
+				
+				//Checks whether the sudoku is a correct solvable sudoku 
+				if(checkKolom(p, k) || checkRij(p, k) || checkBlok(p,k)){
+					return false;
+				}
+			}
+			tabel.set(p.GetY(),p.GetX(),k);
+			k--;
+			if(k != -1){
+				Punt vierkant = new Punt(p.GetX(),p.GetY());
+				blokje = nummerVierkant(vierkant);
+				blokken[blokje.GetY()][blokje.GetX()][k] = true;
+			}
+			p = next(p);
+		} 
+		return true; 
+	}
+	
+	public void LosOp(Punt p) throws InterruptedException{
+		
+		/*Finds solutions for Sudoku, this could be none
+		 * Point p states at which place the solver is in tabel 
+		 * The semaphore makes sure only one solution is found at a time
+		 */
+		
+		//If the number in the sudoku needs to be filled in, thus being 0
+		if(tabel.get(p.GetY(),p.GetX()) == 0){
+			
+			//trying numbers 1 through 9
+			for(int i=1; i<10; i++){
+			
+				//Critical section, makes sure only one solution is found at a time
+				semaphore.acquire();
+				
+				// Checks whether the number could fit in the sudoku
+				if(!checkKolom(p, i) && !checkRij(p, i) && !checkBlok(p,i)){
+					
+					// Fills in the number
+					tabel.set(p.GetY(),p.GetX(),i);
+					Punt b = nummerVierkant(p);
+					blokken[b.GetY()][b.GetX()][i-1] = true;
+					
+					// If there is a next cell of tabel, call LosOp again (recursive method, making use of Backtracking) 
+					if(next(p).GetX() != -1){
+						
+						//Permit is released thus LosOp continues
+						semaphore.release();
+						LosOp(next(p));
+					}
+					else{ 
+						//Output in Graphical Interface
+					}
+					
+					//Reset the value of blokken at Point b so we can try more solutions
+					blokken[b.GetY()][b.GetX()][i-1] = false;
+					
+					//LosOp stops here, continues when new permit is released
+					semaphore.acquire();
+					
+					//Used to exit Backtracking when user resets the Graphical Interface
+					if(reset){
+						return;
+					}
+				}
+				//Makes sure LosOp can find a new solution for Sudoku if it exists
+				semaphore.release();
+			}
+			
+			//Changes the value of tabel at point p to 0 so Backtracking can find more solutions for Sudoku it they exist
+			tabel.set(p.GetY(),p.GetX(),0);				
+		}
+		else{
+			
+			//An already filled in number of Sudoku should't be changed
+			if(next(p).GetX() != -1)
+				LosOp(next(p));
+			else{ 
+				
+				//Output in Graphical Interface, permit needed for more solutions and reset to exit Backtracking if necessary
+				semaphore.acquire();
+				if(reset){
+					return;
+				}
+			}
+		}
+		
+		//If no solution can be found, solutions is changed to false
+		if(p.GetX() == 0 && p.GetY() == 0){
+			solutions = false;
+		}
+	}
+	
+	
+	//Older code which we used to run Test() and Test2(), these are almost identical to the methods we use now
+	
+	public void LosOp2(Punt p){
+		if(tabel.get(p.GetY(),p.GetX()) == 0){
+			for(int i=1; i<10; i++){
+				if(!checkKolom(p, i) && !checkRij(p, i) && !checkBlok(p,i)){
+					tabel.set(p.GetY(),p.GetX(),i);
+					Punt b = nummerVierkant(p);
+					blokken[b.GetY()][b.GetX()][i-1] = true;
+					if(next(p).GetX() != -1)
+						LosOp2(next(p));
+					else System.out.println(tabel.toString());
+					blokken[b.GetY()][b.GetX()][i-1] = false;
+				}
+			}
+			tabel.set(p.GetY(),p.GetX(),0);				
+		}
+		else{
+			if(next(p).GetX() != -1)
+				LosOp2(next(p));
+			else System.out.println(tabel.toString());
+		}
+		if(p.GetX() == 0 && p.GetY() == 0) System.out.println("Geen oplossingen");
+	}
+	
+	public void vulIn(){
+		Scanner sc = new Scanner(System.in);
+		System.out.println("Voer je sudoku in:");
+		int k = -1;
+		Punt p = new Punt(0,0);
+		Punt blokje = new Punt(-1,-1);
+		for(int i = 0; i<81; i++){
+			k = sc.nextInt();
+			if(k!=0){
+				if(checkKolom(p, k) || checkRij(p, k) || checkBlok(p,k)){
+					System.out.println("Geen Oplossingen");
+				}
+			}
+			tabel.set(p.GetY(),p.GetX(),k);
+			k--;
+			if(k != -1){
+				Punt vierkant = new Punt(p.GetX(),p.GetY());
+				blokje = nummerVierkant(vierkant);
+				blokken[blokje.GetY()][blokje.GetX()][k] = true;
+			}
+			p = next(p);
+		}		
+	
+	}
+	
+	public static void Test(){
+		
+		//A test used to see if our methods which help to solve sudoku's worked (use sudoku 1)
+		Sudoku t = new Sudoku();
+		t.vulIn();
+		System.out.print(tabel.toString());
+		if(checkBlok(new Punt(8,1), 7)){
+			System.out.println("passed");
+		}
+		if(!checkRij(new Punt(0,4), 1)){
+			System.out.println("passed");
+		}
+		Punt l = nummerVierkant(new Punt(4,7));
+		if(l.GetY() == 2){
+			System.out.println("passed");
+		}
+		if(!blokken[0][0][1]){
+			System.out.println("passed");
+		}
+		if(!blokken[1][2][5]){
+			System.out.println("passed");
+		}
+		if(tabel.get(4,3) == 4){
+			System.out.println("passed");
+		}
+	}
+	
+	public static void Test2() throws InterruptedException{
+		
+		//A test used to see if our main methods used to solve a sudoku worked, gave a filled in sudoku back (any of the 3 sudoku's can be used)
+		Sudoku u = new Sudoku();
+		u.vulIn();
+		Punt zero = new Punt(0,0);
+		u.LosOp2(zero);
+	}
+	
+	public static void main(String[] args) throws InterruptedException{
+		//Test();
+		Test2();
+	}
+}
+
+/* 3 sudoku's, the second sudoku has two solutions the others one. The third sudoku is said to be the hardest sudoku in the world (Telegraph)
+ * 
+ *7 9 0 0 0 0 3 0 0 0 0 0 0 0 6 9 0 0 8 0 0 0 3 0 0 7 6 0 0 0 0 0 5 0 0 2 0 0 5 4 1 8 7 0 0 4 0 0 7 0 0 0 0 0 6 1 0 0 9 0 0 0 8 0 0 2 3 0 0 0 0 0 0 0 9 0 0 0 0 5 4
+ *8 5 0 0 6 1 3 4 2 6 4 0 0 3 2 8 1 5 1 2 3 8 5 4 6 9 7 2 8 1 4 9 3 5 7 6 5 9 4 2 7 6 1 8 3 7 3 6 5 1 8 4 2 9 9 1 2 3 8 5 7 6 4 3 7 8 6 4 9 2 5 1 4 6 5 1 2 7 9 3 8
+ *8 0 0 0 0 0 0 0 0 0 0 3 6 0 0 0 0 0 0 7 0 0 9 0 2 0 0 0 5 0 0 0 7 0 0 0 0 0 0 0 4 5 7 0 0 0 0 0 1 0 0 0 3 0 0 0 1 0 0 0 0 6 8 0 0 8 5 0 0 0 1 0 0 9 0 0 0 0 4 0 0
+ */
