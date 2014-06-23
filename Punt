@@ -1,0 +1,19 @@
+
+public class Punt {
+
+	private int X;
+	private int Y;
+	
+	public Punt(int x1, int y1){
+		X = x1;
+		Y = y1;
+	}
+	
+	public int GetX(){
+		return X;
+	}
+	
+	public int GetY(){
+		return Y;
+	}
+}
