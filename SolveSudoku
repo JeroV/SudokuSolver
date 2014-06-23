@@ -1,0 +1,383 @@
+import java.awt.*;
+
+import javax.swing.*;
+import javax.swing.text.NumberFormatter;
+
+import java.awt.event.*;
+import java.text.NumberFormat;
+
+//Using a JFrame and ActionListeners to create the Graphical Interface
+public class SolveSudoku extends JFrame implements ActionListener {
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -7891320224172611385L;
+
+	//Using card-layout as layout
+	private CardLayout cardLayout = new CardLayout();
+	
+	//Our main Panel which uses card-layout to show input, output and the texts 'No Solutions' and 'No More Solutions'
+	private JPanel sudokuPanel = new JPanel();
+	private JPanel sudokuInput = new JPanel();
+	private JPanel sudokuOutput = new JPanel();
+	private JPanel sudokuNoSolutions = new JPanel();
+	private JPanel sudokuNoMoreSolutions =  new JPanel();
+	
+	//Our main button Panel which uses card-layout to show a solve button, an other solution button, a previous button and no button
+	private JPanel buttonPanel = new JPanel();
+	private JPanel sudokuSolve = new JPanel();
+	private JPanel nextSolution = new JPanel();
+	private JPanel previousSolution = new JPanel();
+	private JPanel noSolution = new JPanel();
+	
+	//Our main title Panel which uses card-layout to show the title when the program launched and when a solution has been found
+	private JPanel titlePanel = new JPanel();
+	private JPanel fillinTitle = new JPanel();
+	private JPanel solutionTitle = new JPanel();
+	
+	//The input uses 81 JFormattedTextfields, the output 81 JTextFields and 81 JTextFields used to transfer from JFormattedTextField 
+	//to an array
+	private JFormattedTextField[] textfieldArray = new JFormattedTextField[81];
+	private JTextField[] textfieldArray2 = new JTextField[81];
+	private JTextField[] textfieldArray3 = new JTextField[81];
+	
+	//The three buttons on the main button Panel
+	private JButton solveButton = new JButton("Solve");
+	private JButton nextButton= new JButton("Another Solution");
+	private JButton previousButton = new JButton("Previous Solution");
+	
+	//The two titles on the main title Panel
+	private JLabel sudoku = new JLabel("Solve a Sudoku");
+	private JLabel solution = new JLabel("Solution:");
+	
+	//A reset button
+	private JButton resetButton = new JButton("Reset");
+	
+	//Labels if no solution has been found for on the main Panel
+	private JLabel noSolutions = new JLabel("No Solutions");
+	private JLabel nomoreSolutions = new JLabel("<html>No more Solutions,<br>please press previous<br>for the last solution");
+	
+	//An array used to call the method vulIn(array)
+	private int[] sudokuArray = new int[81];
+	
+	//Of course our SolveSudoku class needs a Sudoku to start solving it 
+	private Sudoku s = new Sudoku();
+	
+	//The method LosOp(Punt p) always starts with a Point p = (0,0)
+	private Punt p = new Punt(0,0);
+	
+	//A boolean which tells us if we need to cancel Backtracking if it is still in progress
+	private boolean notFinished = false;
+	
+	//A boolean which tells us if the card-layout shows its last cards
+	private boolean last = false;
+	
+	//The constructor that builds the Graphical Interface
+	public SolveSudoku(){
+		setTitle("SolveSudokuBV");
+		setLayout(null);
+		setSize(700,500);
+		setLocation(300,100);
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		setVisible(true);
+		Font bigFont = new Font("Serif", Font.PLAIN, 20);
+		Font bigfontTitle = new Font("Arial", Font.PLAIN, 30);
+		
+		solveButton.setPreferredSize(new Dimension(200,100));
+		nextButton.setPreferredSize(new Dimension(200,100));
+		previousButton.setPreferredSize(new Dimension(200,100));
+		
+		sudoku.setFont(bigfontTitle);
+		solution.setFont(bigfontTitle);
+		noSolutions.setFont(bigfontTitle);
+		nomoreSolutions.setFont(bigfontTitle);
+		
+		//JFormattedTextField accepts a format, thus here we have numbers 1 through 9 only
+		NumberFormat longFormat = NumberFormat.getIntegerInstance();
+		NumberFormatter numberFormatter = new NumberFormatter(longFormat);
+		numberFormatter.setValueClass(Integer.class); 
+		numberFormatter.setAllowsInvalid(false); 
+		numberFormatter.setMinimum(1);
+		numberFormatter.setMaximum(9);
+		
+		//Setting up all the textfields 
+		for(int i = 0; i < textfieldArray.length; i++){
+			textfieldArray[i] = new JFormattedTextField(numberFormatter);
+			textfieldArray[i].setFont(bigFont);
+			textfieldArray[i].setPreferredSize(new Dimension(31,31));
+			sudokuInput.add(textfieldArray[i]);
+		}	
+		
+		for(int j = 0; j < textfieldArray2.length; j++){
+		textfieldArray2[j] = new JTextField(2);
+		textfieldArray2[j].setFont(bigFont);
+		sudokuOutput.add(textfieldArray2[j]);
+		}
+		
+		for(int k = 0; k < textfieldArray3.length; k++){
+			textfieldArray3[k] = new JTextField(1);
+		}
+		
+		//Adding labels, buttons etc to our cards
+		fillinTitle.add(sudoku);
+		solutionTitle.add(solution);
+		
+		sudokuNoSolutions.add(noSolutions);
+		sudokuNoMoreSolutions.add(nomoreSolutions);
+		
+		sudokuSolve.add(solveButton);
+		nextSolution.add(nextButton);
+		previousSolution.add(previousButton);
+		
+		//Adding the main Panels to our JFrame
+		add(sudokuPanel);
+		add(buttonPanel);
+		add(titlePanel);
+		add(resetButton);
+		
+		
+		sudokuPanel.setBounds(90,90,350,325);
+		buttonPanel.setBounds(470,200,200,100);
+		titlePanel.setBounds(135,20,250,50);
+		resetButton.setBounds(470,300,200,100);
+		
+		//Important to set the layout to card-layout
+		sudokuPanel.setLayout(cardLayout);
+		buttonPanel.setLayout(cardLayout);
+		titlePanel.setLayout(cardLayout);
+		
+		//Adding our cards to their Panels, the order matters. First added is also the first card to be seen on the screen
+		sudokuPanel.add(sudokuInput,"fill in");
+		sudokuPanel.add(sudokuOutput,"output");
+		sudokuPanel.add(sudokuNoMoreSolutions,"no more solutions");
+		sudokuPanel.add(sudokuNoSolutions,"error output");
+		buttonPanel.add(sudokuSolve,"solve button");
+		buttonPanel.add(nextSolution,"next solution");
+		buttonPanel.add(previousSolution,"previous Solution");
+		buttonPanel.add(noSolution,"no solution");
+		titlePanel.add(fillinTitle,"fill in title");
+		titlePanel.add(solutionTitle,"solution title");
+		
+		//Adding actionlisteners to the buttons
+		solveButton.addActionListener(this);
+		nextButton.addActionListener(this);
+		resetButton.addActionListener(this);	
+		previousButton.addActionListener(this);
+	}
+	
+	//Describing what happens when the above buttons are pressed
+	public void actionPerformed(ActionEvent e) {
+		// TODO Auto-generated method stub
+		
+			//The solve button is pressed, than...
+			if(e.getSource() == solveButton){
+				
+				//If the reset button has been pressed and the LosOp-method still has Backtracking to do, this will
+				//make sure that the old thread will complete the LosOp-method and that the new thread can start 
+				//the LosOp-method
+				if(notFinished){
+					for(int number = 0; number < 81; number++){
+						s.getSemaphore().release();
+					}
+					s.setSemaphore();
+				}
+			
+				//The input which the user gave is put in an array
+				for(int i = 0; i < textfieldArray.length; i++){
+					if(textfieldArray[i].getValue() == null){
+						textfieldArray3[i].setText("0");
+					}
+					else{
+						textfieldArray3[i].setText(textfieldArray[i].getText());
+					}
+					sudokuArray[i] = Integer.parseInt(textfieldArray3[i].getText());
+				}
+				
+				//If the method vulIn(array) states the sudoku has no solutions, we're done. Otherwise we continue
+				if(!s.vulIn(sudokuArray)){
+					cardLayout.last(sudokuPanel);
+					last = true;
+					cardLayout.last(titlePanel);
+					cardLayout.last(buttonPanel);
+					
+					//Necessary to prevent correct sudoku's giving no solution
+					s.setReset(false);
+				}
+		
+				else{
+					
+					//A thread which runs the LosOp-method, so we can use a semaphore to print out one solution at a time
+					Thread solveThread = new Thread(){
+						public void run(){
+							try {
+								s.LosOp(p);
+							} catch (InterruptedException e1) {
+								// TODO Auto-generated catch block
+								System.out.println("fail");
+							}
+						}
+					}; 
+					solveThread.start();
+					
+					//Again preventing from giving no solution error
+					if(notFinished){
+						s.setReset(false);
+					}
+					
+					//This thread makes sure that the other thread in the LosOp-method has found answers before we continue
+					//our main thread and decide what to do with this information
+					Thread waitThread = new Thread(){
+						public void run(){
+							try {
+								Thread.sleep(500);
+							} catch (InterruptedException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+						}
+					};
+					waitThread.start();
+					try {
+						waitThread.join();
+					} catch (InterruptedException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					
+					//If there are no solutions, we're done 
+					if(!s.getSolutions()){
+						cardLayout.last(sudokuPanel);
+						last = true;
+						cardLayout.last(titlePanel);
+						cardLayout.last(buttonPanel);
+					}
+					else{
+						
+						//If there are solutions, we put them in our sudokuArray and than output the sudokuArray on screen using
+						//JTextFields
+						for(int k = 0; k < 9; k++){
+							for(int l = 0; l < 9; l++){
+								sudokuArray[9*k + l] = s.getValue(k,l);
+							}
+						}
+						for(int m = 0; m < 81; m++){
+							textfieldArray2[m].setText(Integer.toString(sudokuArray[m]));
+						}
+						
+						//The cards need to be updated on the screen
+						cardLayout.first(buttonPanel);
+						cardLayout.next(buttonPanel);			
+						cardLayout.last(titlePanel);
+						cardLayout.first(sudokuPanel);
+						cardLayout.next(sudokuPanel);
+						last = false;
+					}
+				}
+			}
+			
+			//The reset button resets the screen to the first card-layout and clears all input fields and transfer fields (just to be sure)
+			if(e.getSource() == resetButton){	
+				
+				//If the last screen before the reset button was hit had no solutions on it, there's no Backtracking problem
+				if(last){
+					notFinished = false;
+				}
+				
+				//Otherwise there is a Backtracking problem, but the solve button will fix this with these variables and their values
+				else{
+					notFinished = true;
+					s.setReset(true);
+				}	   
+				
+				//We reset our Sudoku, inputs and screen
+				s = new Sudoku();
+				for(int j = 0; j < textfieldArray.length; j++){
+					textfieldArray[j].setValue(null); 
+					textfieldArray[j].setText("");
+				}
+				for(int n = 0; n < textfieldArray3.length; n++){
+					textfieldArray3[n].setText("");
+				}
+				sudokuArray = new int[81];
+
+				cardLayout.first(sudokuPanel);
+				cardLayout.first(buttonPanel);
+				cardLayout.first(titlePanel);
+	
+			}
+			
+			//The next button will only appear if the input has an actual solution and the solve button has been pressed
+			//It replaces the solve button
+			//It doesn't necessarily provide another solution, but it does provide an answer if there is or not and if there is
+			//another solution, than it will print it
+			if(e.getSource() == nextButton){
+				
+				//The thread in the LosOp-method was paused, now it continues
+				s.getSemaphore().release();
+				
+				//Of course this means we have to wait again for the thread to finish or hit another permit acquire
+				Thread waitThread2 = new Thread(){
+					public void run(){
+						try {
+							Thread.sleep(500);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+					}
+				};
+				waitThread2.start();
+				try {
+					waitThread2.join();
+				} catch (InterruptedException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				
+				//There are no more solutions to a sudoku when Backtracking creates zero's in the sudoku (it fails)
+				if(s.containZero()){
+					cardLayout.last(sudokuPanel);
+					cardLayout.previous(sudokuPanel);
+					last = true;
+					cardLayout.last(titlePanel);
+					cardLayout.last(buttonPanel);
+					cardLayout.previous(buttonPanel);
+				}
+				else{
+					
+					//If it doesn't find any zero's, there has to be another solution
+					for(int k = 0; k < 9; k++){
+						for(int l = 0; l < 9; l++){
+							sudokuArray[9*k + l] = s.getValue(k,l);
+						}
+					}
+					for(int m = 0; m < 81; m++){
+						textfieldArray2[m].setText(Integer.toString(sudokuArray[m]));
+					}
+					cardLayout.first(buttonPanel);
+					cardLayout.next(buttonPanel);			
+					cardLayout.last(titlePanel);
+					cardLayout.first(sudokuPanel);
+					cardLayout.next(sudokuPanel);
+					last = false;
+				}
+			}
+			
+			//If the sudoku has a solution as output and the nextButton states there're no more solutions, the previousButton
+			//will bring you back to the last given solution
+			if(e.getSource() == previousButton){
+				last = true;
+				cardLayout.last(titlePanel);
+				cardLayout.last(buttonPanel);
+				cardLayout.first(sudokuPanel);
+				cardLayout.next(sudokuPanel);
+			}
+	}	
+	
+	//Create a new SolveSudoku Screen (JFrame)
+	public static void main(String[] args) {
+		// TODO Auto-generated method stub
+		new SolveSudoku();
+	}
+}
