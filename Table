@@ -1,0 +1,99 @@
+public class Table {
+	private int[][] elements;
+	
+	public Table(int n, int m, int val){
+			elements = new int[n][m];
+			for(int i = 0; i < n; i++){
+				for(int j = 0; j < m; j++){
+					elements[i][j] = val;
+				}
+			}
+	}
+	
+	public void set(int row, int col, int val){
+		if(row >= 0 && row < elements.length && col >= 0 && col < elements[row].length){
+			elements[row][col] = val;
+		}
+	}
+	
+	public int get(int row, int col){
+		if(row >= 0 && row < elements.length && col >= 0 && col < elements[row].length){
+			return elements[row][col];
+		}
+		return -1;
+	}
+	
+	public int numRows(){
+		return elements.length;
+	}
+	
+	public int numCols(){
+		return elements[0].length;
+	}
+	
+	//Table.toString() can only print out tables with values of 8 numbers or less 
+	public String toString(){
+		String res = "";
+		for(int i= 0; i < this.numRows(); i++){
+			for(int j = 0; j < this.numCols(); j++){
+				int length = String.valueOf(elements[i][j]).length();
+				if(length >= 9){
+					return res = "Error";
+				}
+				for(int k  = 0; k < (9 - length); k++){
+					res = res + " ";
+				}
+				res = res + elements[i][j];
+				if(j + 1 == elements[0].length){
+					res = res + "\n";
+				}
+			}
+		}
+		return res;
+	}
+	
+	public Table sum(Table that){
+		if(this.numRows() == that.numRows() && this.numCols() == that.numCols()){
+			Table res = new Table(this.numRows(),this.numCols(),0);
+			for(int i = 0; i < this.numRows(); i++){
+				for(int j = 0; j < this.numCols(); j++){
+					res.set(i,j,this.get(i,j) + that.get(i,j));
+				}
+			}
+			return res;
+		}
+		return null; 
+	}
+	
+	public Table product(Table that){
+		if(this.numCols() == that.numRows()){
+			Table res = new Table(this.numRows(),that.numCols(),0);
+			for(int i = 0; i < this.numRows(); i++){
+				for(int j = 0; j < that.numCols(); j++){
+					int h = 0;
+					for(int k = 0; k < this.numCols(); k++){
+						h = h + this.get(i,k)*that.get(k,j);
+					}
+					res.set(i,j,h);
+				}
+			}
+			return res;
+		}
+		return null;
+	}
+	
+	public static void main(String[] args){
+		Table Tabel = new Table(5,6,2);
+		System.out.println(Tabel);
+		Tabel.set(3,5,9);
+		Tabel.set(2,4,28);
+		System.out.println(Tabel.get(2,4));
+		System.out.println(Tabel.numRows());
+		System.out.println(Tabel.numCols());
+		System.out.println(Tabel);
+		Tabel.set(0,0,88888888);
+		System.out.println(Tabel);
+		Tabel.set(1,0,999999999);
+		System.out.println(Tabel);
+	}
+}
